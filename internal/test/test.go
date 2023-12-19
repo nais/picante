@@ -1,6 +1,8 @@
 package test
 
 import (
+	"fmt"
+	hashstructure "github.com/mitchellh/hashstructure/v2"
 	app "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,4 +107,70 @@ func CreateWorkload(namespace, name string, labels map[string]string, annotation
 			AvailableReplicas: 1,
 		},
 	}
+}
+
+func Workload(namespace, name string, labels map[string]string, annotations map[string]string, images ...string) *app.ReplicaSet {
+	c := make([]v1.Container, 0)
+	for _, image := range images {
+		c = append(c, v1.Container{
+			Name:  name,
+			Image: image,
+		})
+	}
+	l := merge(map[string]string{
+		"nais.io/salsa-keyRef-provider": "cosign",
+		"team":                          namespace,
+		"app.kubernetes.io/name":        name,
+	}, labels)
+
+	replicas := int32(1)
+	spec := app.ReplicaSetSpec{
+		Replicas: &replicas,
+		Selector: &metav1.LabelSelector{
+			MatchLabels: l,
+		},
+		Template: v1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Labels:    l,
+			},
+			Spec: v1.PodSpec{
+				Containers: c,
+			},
+		},
+	}
+	hash, err := hash(spec)
+	if err != nil {
+		panic(err)
+	}
+	return &app.ReplicaSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ReplicaSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", name, hash),
+			Namespace: namespace,
+			Labels:    l,
+			Annotations: merge(map[string]string{
+				"deployment.kubernetes.io/desired-replicas": "1",
+			}, annotations),
+		},
+		Spec: spec,
+		// Default replica set status
+		Status: app.ReplicaSetStatus{
+			Replicas:          1,
+			ReadyReplicas:     1,
+			AvailableReplicas: 1,
+		},
+	}
+}
+
+func hash(v any) (string, error) {
+	hash, err := hashstructure.Hash(v, hashstructure.FormatV2, nil)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash), nil
 }

@@ -7,3 +7,4 @@ cover.out
 etc
 /bin/picante
 /.env
+/.picante.yaml

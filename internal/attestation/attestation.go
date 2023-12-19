@@ -50,12 +50,19 @@ type VerifyAttestationOpts struct {
 	Logger              *log.Entry
 }
 
-func NewVerifyAttestationOpts(
-	verifyCmd *verify.VerifyAttestationCommand,
+func NewVerifier(
+	rekorURL string,
+	localImage bool,
+	ignoreTLog bool,
 	organizations []string,
 	identities []cosign.Identity,
 	keyRef string,
-) (*VerifyAttestationOpts, error) {
+) (Verifier, error) {
+	verifyCmd := &verify.VerifyAttestationCommand{
+		RekorURL:   rekorURL,
+		LocalImage: localImage,
+		IgnoreTlog: ignoreTLog,
+	}
 	gCertId := github.NewCertificateIdentity(organizations)
 	ids := BuildCertificateIdentities(gCertId, identities)
 	opts, err := CosignOptions(context.Background(), keyRef, ids)

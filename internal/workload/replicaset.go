@@ -1,6 +1,7 @@
 package workload
 
 import (
+	"fmt"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -50,6 +51,7 @@ func (r *ReplicaSet) Active() bool {
 		r.log.Warnf("%s:unable to parse desired replicas annotation", r.identifier)
 		return false
 	}
+	fmt.Printf("desired: %d, replicas: %d, available: %d, ready: %d\n", desired, r.status.Replicas, r.status.AvailableReplicas, r.status.ReadyReplicas)
 	return r.status.Replicas > 0 &&
 		int32(desired) == r.status.Replicas &&
 		r.status.Replicas == r.status.AvailableReplicas &&

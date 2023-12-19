@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"k8s.io/client-go/tools/cache"
 	"net/url"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 	"picante/internal/attestation"
 )
 
-type Config struct {
+type EventHandler struct {
 	Client   client.Client
 	Cluster  string
 	verifier attestation.Verifier
@@ -22,8 +23,8 @@ type Config struct {
 	ctx      context.Context
 }
 
-func NewMonitor(ctx context.Context, client client.Client, verifier attestation.Verifier, cluster string) *Config {
-	return &Config{
+func NewEventHandler(ctx context.Context, client client.Client, verifier attestation.Verifier, cluster string) *EventHandler {
+	return &EventHandler{
 		Client:   client,
 		Cluster:  cluster,
 		verifier: verifier,
@@ -32,7 +33,9 @@ func NewMonitor(ctx context.Context, client client.Client, verifier attestation.
 	}
 }
 
-func (c *Config) OnDelete(obj any) {
+var _ cache.ResourceEventHandler = &EventHandler{}
+
+func (c *EventHandler) OnDelete(obj any) {
 	c.logger.WithFields(log.Fields{"event": "OnDelete"})
 
 	w := workload.GetMetadata(obj, c.logger)
@@ -54,7 +57,7 @@ func (c *Config) OnDelete(obj any) {
 	}
 }
 
-func (c *Config) OnUpdate(old any, new any) {
+func (c *EventHandler) OnUpdate(old any, new any) {
 	c.logger.WithFields(log.Fields{"event": "update"})
 
 	wNew := workload.GetMetadata(new, c.logger)
@@ -76,7 +79,7 @@ func (c *Config) OnUpdate(old any, new any) {
 	}
 }
 
-func (c *Config) OnAdd(obj any) {
+func (c *EventHandler) OnAdd(obj any, _ bool) {
 	c.logger.WithFields(log.Fields{"event": "add"})
 
 	w := workload.GetMetadata(obj, c.logger)
@@ -97,7 +100,7 @@ func (c *Config) OnAdd(obj any) {
 	}
 }
 
-func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) error {
+func (c *EventHandler) verifyContainers(ctx context.Context, w workload.Workload) error {
 	for _, container := range w.GetContainers() {
 		appName := w.GetName()
 		project := workload.ProjectName(w, c.Cluster, container.Name)
@@ -194,7 +197,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 }
 
 // TODO
-//func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
+//func (c *EventHandler) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
 //	for _, tag := range p.Tags {
 //		if strings.Contains(tag.Name, "digest:") {
 //			d := strings.Split(tag.Name, ":")[1]
@@ -206,7 +209,7 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 //	return true
 //}
 
-func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {
+func (c *EventHandler) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {
 	b, err := json.Marshal(metadata.Statement.Predicate)
 	if err != nil {
 		return err
@@ -218,7 +221,7 @@ func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.
 	return nil
 }
 
-func (c *Config) deleteProject(w workload.Workload, container workload.Container) error {
+func (c *EventHandler) deleteProject(w workload.Workload, container workload.Container) error {
 	project := workload.ProjectName(w, c.Cluster, container.Name)
 	projectVersion := version(container.Image)
 	pr, err := c.Client.GetProject(c.ctx, project, projectVersion)
@@ -239,7 +242,7 @@ func (c *Config) deleteProject(w workload.Workload, container workload.Container
 	return nil
 }
 
-func (c *Config) retrieveProject(ctx context.Context, projectName, env, team, app string) (*client.Project, error) {
+func (c *EventHandler) retrieveProject(ctx context.Context, projectName, env, team, app string) (*client.Project, error) {
 	tag := url.QueryEscape(projectName)
 	projects, err := c.Client.GetProjectsByTag(ctx, tag)
 	if err != nil {

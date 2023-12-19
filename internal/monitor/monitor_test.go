@@ -3,13 +3,11 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	v1 "k8s.io/api/apps/v1"
 	"net/url"
 	"os"
-	"testing"
-
-	v1 "k8s.io/api/apps/v1"
-
 	"picante/internal/test"
+	"testing"
 
 	"github.com/nais/dependencytrack/pkg/client"
 
@@ -24,7 +22,7 @@ var cluster = "test"
 func TestConfig_OnAdd(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, cluster)
+	m := NewEventHandler(context.Background(), c, v, cluster)
 	w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 	var statement in_toto.CycloneDXStatement
@@ -60,17 +58,17 @@ func TestConfig_OnAdd(t *testing.T) {
 
 		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 
-		m.OnAdd(w)
+		m.OnAdd(w, false)
 	})
 
 	t.Run("should not create project if no metadata is found", func(t *testing.T) {
 		v.On("Verify", mock.Anything, mock.Anything).Return([]*attestation.ImageMetadata{}, nil)
 
-		m.OnAdd(w)
+		m.OnAdd(w, false)
 	})
 
 	t.Run("should ignore nil workload object", func(t *testing.T) {
-		m.OnAdd(nil)
+		m.OnAdd(nil, false)
 	})
 
 	t.Run("should not create if a !active workload", func(t *testing.T) {
@@ -79,7 +77,7 @@ func TestConfig_OnAdd(t *testing.T) {
 			ReadyReplicas:     0,
 			AvailableReplicas: 1,
 		}
-		m.OnAdd(w)
+		m.OnAdd(w, false)
 	})
 }
 
@@ -87,7 +85,7 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 	t.Run("should not create project if already exists", func(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
-		m := NewMonitor(context.Background(), c, v, cluster)
+		m := NewEventHandler(context.Background(), c, v, cluster)
 		w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
@@ -106,13 +104,13 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 			LastBomImportFormat: "CycloneDX 1.4",
 		}, nil)
 
-		m.OnAdd(w)
+		m.OnAdd(w, false)
 	})
 
 	t.Run("should update project if a project with same name already exists", func(t *testing.T) {
 		c := NewMockClient(t)
 		v := attestation.NewMockVerifier(t)
-		m := NewMonitor(context.Background(), c, v, cluster)
+		m := NewEventHandler(context.Background(), c, v, cluster)
 		p := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 		var statement in_toto.CycloneDXStatement
@@ -157,14 +155,14 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 
 		c.On("UploadProject", mock.Anything, cluster+":team1:pod1", "latest", "uuid1", false, mock.Anything).Return(nil, nil)
 
-		m.OnAdd(p)
+		m.OnAdd(p, false)
 	})
 }
 
 func TestConfig_OnDelete(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
+	m := NewEventHandler(context.Background(), c, v, "test")
 	p := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 
 	t.Run("should delete project", func(t *testing.T) {
@@ -208,7 +206,7 @@ func TestConfig_OnDelete(t *testing.T) {
 func TestConfig_OnUpdate(t *testing.T) {
 	c := NewMockClient(t)
 	v := attestation.NewMockVerifier(t)
-	m := NewMonitor(context.Background(), c, v, "test")
+	m := NewEventHandler(context.Background(), c, v, "test")
 	w := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
 	o := test.CreateWorkload("team1", "pod2", nil, nil, "nginx:old")
 
