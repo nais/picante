@@ -144,23 +144,22 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 			}
 
 			if p != nil {
-
-				//if !c.digestHasChanged(metadata, p) {
-				//	c.logger.WithFields(log.Fields{
-				//		"projectVersion": projectVersion,
-				//		"workload":       w.GetName(),
-				//		"container":      metadata.ContainerName,
-				//		"digest":         metadata.Digest,
-				//	}).Info("project exist and has same digest, skipping")
-				//	continue
-				//}
+				if !c.digestHasChanged(metadata, p) {
+					c.logger.WithFields(log.Fields{
+						"projectVersion": projectVersion,
+						"workload":       w.GetName(),
+						"container":      metadata.ContainerName,
+						"digest":         metadata.Digest,
+					}).Info("project exist and has same digest, skipping")
+					continue
+				}
 
 				c.logger.WithFields(log.Fields{
 					"projectVersion": projectVersion,
 					"workload":       w.GetName(),
 					"container":      metadata.ContainerName,
 					"digest":         metadata.Digest,
-				}).Info("project exist update version:", p.Version, " to: ", projectVersion)
+				}).Info("project exist update version: ", p.Version, " to: ", projectVersion)
 
 				_, err := c.Client.UpdateProject(ctx, p.Uuid, project, projectVersion, w.GetNamespace(), tags)
 				if err != nil {
@@ -193,18 +192,19 @@ func (c *Config) verifyContainers(ctx context.Context, w workload.Workload) erro
 	return nil
 }
 
-// TODO
-//func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
-//	for _, tag := range p.Tags {
-//		if strings.Contains(tag.Name, "digest:") {
-//			d := strings.Split(tag.Name, ":")[1]
-//			if d == metadata.Digest {
-//				return false
-//			}
-//		}
-//	}
-//	return true
-//}
+func (c *Config) digestHasChanged(metadata *attestation.ImageMetadata, p *client.Project) bool {
+	for _, tag := range p.Tags {
+		if !strings.Contains(tag.Name, "digest:") {
+			continue
+		}
+
+		d := strings.SplitAfter(tag.Name, "digest:")[1]
+		if d == metadata.Digest {
+			return false
+		}
+	}
+	return true
+}
 
 func (c *Config) uploadSBOMToProject(ctx context.Context, metadata *attestation.ImageMetadata, project, parentUuid, projectVersion string) error {
 	b, err := json.Marshal(metadata.Statement.Predicate)

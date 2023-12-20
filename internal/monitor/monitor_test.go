@@ -159,6 +159,43 @@ func TestConfig_OnAdd_Exists(t *testing.T) {
 
 		m.OnAdd(p)
 	})
+
+	t.Run("should not update project if project have the same digest", func(t *testing.T) {
+		c := NewMockClient(t)
+		v := attestation.NewMockVerifier(t)
+		m := NewMonitor(context.Background(), c, v, cluster)
+		p := test.CreateWorkload("team1", "pod1", nil, nil, "nginx:latest")
+
+		var statement in_toto.CycloneDXStatement
+		file, err := os.ReadFile("testdata/sbom.json")
+		assert.NoError(t, err)
+		err = json.Unmarshal(file, &statement)
+		assert.NoError(t, err)
+
+		c.On("GetProject", mock.Anything, cluster+":team1:pod1", "latest").Return(nil, nil)
+
+		v.On("Verify", mock.Anything, mock.Anything).Return(&attestation.ImageMetadata{
+			BundleVerified: false,
+			Image:          "nginx:latest",
+			Statement:      &statement,
+			ContainerName:  "pod1",
+			Digest:         "sha256:10",
+		}, nil)
+
+		c.On("GetProjectsByTag", mock.Anything, url.QueryEscape(cluster+":team1:pod1")).Return([]*client.Project{
+			{
+				Classifier: "APPLICATION",
+				Group:      "team",
+				Uuid:       "uuid1",
+				Name:       cluster + ":team1:pod1",
+				Publisher:  "Team",
+				Tags:       []client.Tag{{Name: cluster + ":team1:pod1"}, {Name: "team1"}, {Name: "pod1"}, {Name: "test"}, {Name: "digest:sha256:10"}},
+				Version:    "version1",
+			},
+		}, nil)
+
+		m.OnAdd(p)
+	})
 }
 
 func TestConfig_OnDelete(t *testing.T) {
