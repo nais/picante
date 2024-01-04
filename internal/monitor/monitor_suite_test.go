@@ -1,6 +1,8 @@
 package monitor
 
 import (
+	"testing"
+
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -10,11 +12,11 @@ import (
 	"picante/internal/informers"
 	"picante/internal/workload"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"testing"
 )
 
 import (
 	"context"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
@@ -23,12 +25,16 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var k8sCfg *rest.Config
-var k8sClient *kubernetes.Clientset
-var testEnv *envtest.Environment
+var (
+	k8sCfg    *rest.Config
+	k8sClient *kubernetes.Clientset
+	testEnv   *envtest.Environment
+)
 
-var ctx context.Context
-var cancel context.CancelFunc
+var (
+	ctx    context.Context
+	cancel context.CancelFunc
+)
 
 var mocker *Mocker
 
@@ -39,7 +45,6 @@ func TestInformers(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-
 	log.SetLevel(log.DebugLevel)
 	testLogger := log.WithFields(log.Fields{
 		"component": "testSuite",
@@ -109,8 +114,7 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-type MockVerifier struct {
-}
+type MockVerifier struct{}
 
 func (m MockVerifier) Verify(ctx context.Context, container workload.Container) (*attestation.ImageMetadata, error) {
 	return &attestation.ImageMetadata{}, nil

@@ -3,6 +3,7 @@ package informers
 import (
 	"context"
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -77,7 +78,7 @@ func (c *Config) RunInformers(ctx context.Context) error {
 
 func toLabelSelectors(labels []config.Label) string {
 	var labelSelector string
-	if labels == nil || len(labels) == 0 {
+	if len(labels) == 0 {
 		return labelSelector
 	}
 

@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"picante/internal/informers"
 	"syscall"
 	"time"
+
+	"picante/internal/informers"
 
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"

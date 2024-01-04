@@ -2,7 +2,8 @@ package test
 
 import (
 	"fmt"
-	hashstructure "github.com/mitchellh/hashstructure/v2"
+
+	"github.com/mitchellh/hashstructure/v2"
 	app "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

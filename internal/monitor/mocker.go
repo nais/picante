@@ -2,9 +2,13 @@ package monitor
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/url"
+
 	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/nais/dependencytrack/pkg/client"
-	"net/http"
+
 	"picante/internal/attestation"
 	"picante/internal/workload"
 )
@@ -43,8 +47,10 @@ func (m Mocker) WithTestData(data *TestData) *Mocker {
 	return &m
 }
 
-var _ attestation.Verifier = &Mocker{}
-var _ client.Client = &Mocker{}
+var (
+	_ attestation.Verifier = &Mocker{}
+	_ client.Client        = &Mocker{}
+)
 
 func (m Mocker) Verify(_ context.Context, container workload.Container) (*attestation.ImageMetadata, error) {
 	return &attestation.ImageMetadata{
@@ -56,34 +62,33 @@ func (m Mocker) Verify(_ context.Context, container workload.Container) (*attest
 }
 
 func (m Mocker) UpdateProject(ctx context.Context, uuid, name, version, group string, tags []string) (*client.Project, error) {
-	updated := make([]*client.Project, 0)
 	var u *client.Project
-	for _, p := range m.testData.Projects {
+	for i, p := range m.testData.Projects {
 		if p.Uuid == uuid {
+			m.testData.Projects[i].Version = version
 			u = p
-			u.Name = name
-			u.Version = version
-			u.Group = group
-			u.Tags = []client.Tag{}
-			for _, tag := range tags {
-				u.Tags = append(u.Tags, client.Tag{Name: tag})
-			}
-			updated = append(updated, u)
-		} else {
-			updated = append(updated, p)
 		}
 	}
+	fmt.Println(u)
 	return u, nil
 }
 
 func (m Mocker) DeleteProject(ctx context.Context, uuid string) error {
-	//TODO implement me
-	panic("implement me")
+	for i, p := range m.testData.Projects {
+		if p.Uuid == uuid {
+			m.testData.Projects = append(m.testData.Projects[:i], m.testData.Projects[i+1:]...)
+		}
+	}
+	return nil
 }
 
 func (m Mocker) DeleteProjects(ctx context.Context, name string) error {
-	//TODO implement me
-	panic("implement me")
+	for i, p := range m.testData.Projects {
+		if p.Name == name {
+			m.testData.Projects = append(m.testData.Projects[:i], m.testData.Projects[i+1:]...)
+		}
+	}
+	return nil
 }
 
 func (m Mocker) GetProjects(ctx context.Context) ([]*client.Project, error) {
@@ -102,7 +107,7 @@ func (m Mocker) GetProject(ctx context.Context, name, version string) (*client.P
 func (m Mocker) GetProjectsByTag(ctx context.Context, tag string) ([]*client.Project, error) {
 	for _, p := range m.testData.Projects {
 		for _, t := range p.Tags {
-			if t.Name == tag {
+			if url.QueryEscape(t.Name) == tag {
 				return []*client.Project{p}, nil
 			}
 		}
@@ -111,11 +116,12 @@ func (m Mocker) GetProjectsByTag(ctx context.Context, tag string) ([]*client.Pro
 }
 
 func (m Mocker) GetTeam(ctx context.Context, team string) (*client.Team, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
+
 func (m Mocker) PortfolioRefresh(ctx context.Context) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -139,7 +145,7 @@ func (m *Mocker) CreateProject(ctx context.Context, name, version, group string,
 }
 
 func (m Mocker) UpdateProjectInfo(ctx context.Context, uuid, version, group string, tags []string) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -148,6 +154,6 @@ func (m Mocker) UploadProject(ctx context.Context, name, version, parentUuid str
 }
 
 func (m Mocker) Headers(ctx context.Context) (http.Header, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }

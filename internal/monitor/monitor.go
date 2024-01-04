@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"k8s.io/client-go/tools/cache"
 	"net/url"
 	"strings"
+
+	"k8s.io/client-go/tools/cache"
 
 	"github.com/nais/dependencytrack/pkg/client"
 	log "github.com/sirupsen/logrus"

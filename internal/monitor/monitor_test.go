@@ -3,11 +3,13 @@ package monitor
 import (
 	"context"
 	"encoding/json"
-	v1 "k8s.io/api/apps/v1"
 	"net/url"
 	"os"
-	"picante/internal/test"
 	"testing"
+
+	v1 "k8s.io/api/apps/v1"
+
+	"picante/internal/test"
 
 	"github.com/nais/dependencytrack/pkg/client"
 
